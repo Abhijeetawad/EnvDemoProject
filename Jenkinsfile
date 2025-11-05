@@ -2,62 +2,33 @@ pipeline {
     agent any
 
     parameters {
-        choice(
-            name: 'ENVIRONMENT',
-            choices: ['DIT', 'SIT', 'UAT', 'PRODUCTION'],
-            description: 'Select deployment environment'
-        )
-    }
-
-    environment {
-        DIT_URL  = "http://dit.example.com"
-        SIT_URL  = "http://sit.example.com"
-        UAT_URL  = "http://uat.example.com"
-        PROD_URL = "http://prod.example.com"
+        choice(name: 'ENVIRONMENT', choices: ['DIT', 'SIT', 'UAT', 'PRODUCTION'], description: 'Select environment')
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Detect Environment') {
             steps {
-                echo "Fetching source code from GitHub..."
-                checkout scm
+                script {
+                    // Detect if ENVIRONMENT is pre-set by the job (DIT, SIT, etc.)
+                    if (!params.ENVIRONMENT) {
+                        env.ENVIRONMENT = 'DIT'
+                    }
+                    echo "Running build for environment: ${params.ENVIRONMENT}"
+                }
             }
         }
 
         stage('Build') {
             steps {
-                echo "Building project for ${params.ENVIRONMENT} environment..."
+                echo "Building for ${params.ENVIRONMENT}"
                 bat 'javac src/envdemo/HelloJenkins.java'
             }
         }
 
         stage('Deploy') {
             steps {
-                script {
-                    if (params.ENVIRONMENT == 'DIT') {
-                        echo "Deploying to DIT environment at ${env.DIT_URL}"
-                    } else if (params.ENVIRONMENT == 'SIT') {
-                        echo "Deploying to SIT environment at ${env.SIT_URL}"
-                    } else if (params.ENVIRONMENT == 'UAT') {
-                        echo "Deploying to UAT environment at ${env.UAT_URL}"
-                    } else {
-                        echo "Deploying to Production at ${env.PROD_URL}"
-                    }
-                }
+                echo "Deploying to ${params.ENVIRONMENT} environment"
             }
-        }
-
-        stage('Post-Deployment') {
-            steps {
-                echo "✅ Deployment to ${params.ENVIRONMENT} completed successfully!"
-            }
-        }
-    }
-
-    post {
-        always {
-            echo "Cleaning workspace..."
-            cleanWs()
         }
     }
 }
